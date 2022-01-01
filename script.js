@@ -4,7 +4,11 @@ const TIME_LIMIT = 20;
 const CARROT_COUNT = 5;
 const BUG_COUNT = 5;
 
-// const bg = new Audio('./sound/bg.mp3');
+const bg = new Audio('./sound/bg.mp3');
+const bugBg = new Audio('./sound/bug_pull.mp3');
+const carrotBg = new Audio('./sound/carrot_pull.mp3');
+const gameWin = new Audio('./sound/game_win.mp3');
+const alert = new Audio('./sound/alert.wav');
 
 const game__board = document.querySelector('.game__board');
 const game__setting__playBtn = document.querySelector('.game__setting__playBtn');
@@ -25,14 +29,13 @@ const randomNumberGenerator = () => {
 }
 
 const refreshBoard = () => {
-    let children = game__board.children;
-    for (const child of children) {
-        if (child.classList[0] === "game__status") continue;
-        child.remove()
+    const game__imgs = document.querySelector('.game__imgs');
+    if (game__imgs) {
+        game__imgs.remove();
     }
 }
 
-const putImgRandom = (img) => {
+const makeImgs = (img) => {
     let image_url = undefined;
     let image_alt = undefined;
     let image_class = undefined;
@@ -56,9 +59,45 @@ const putImgRandom = (img) => {
     image.setAttribute("alt", image_alt);
     image.setAttribute("class", image_class);
     image.style.top = `${y}px`;
-    image.style.right = `${x}px`;
+    image.style.left = `${x}px`;
 
-    game__board.appendChild(image);
+    return image;
+}
+
+const drawImgs = () => {
+    let game__imgs = document.createElement('div');
+    game__imgs.setAttribute('class', "game__imgs");
+
+    for (let i = 0; i < CARROT_COUNT; i++) {
+        game__imgs.appendChild(makeImgs("carrot"));
+    }
+    for (let i = 0; i < BUG_COUNT; i++) {
+        game__imgs.appendChild(makeImgs("bug"));
+    }
+
+    game__board.appendChild(game__imgs);
+}
+
+const gameStop = () => {
+    playBtn.classList.toggle('hide');
+    stopBtn.classList.toggle('hide');
+    clearInterval(intervalId);
+    boardActivate = false;    
+}
+
+const gameStart = () => {
+    intervalId = setInterval(gameTimer, 10);
+    boardActivate = true;
+    gameStatus.style.display = "none";
+    bg.play();
+}
+
+const gameLose = () => {
+    gameStop()
+    onGame = false;
+    gameStatus.innerText = "You Lose... 😭";
+    gameStatus.style.display = "block";
+    bg.pause();
 }
 
 const gameTimer = () => {
@@ -75,14 +114,9 @@ const gameTimer = () => {
             } else {
                 seconds = String(seconds);
             }
-        } else {
-            clearInterval(intervalId);
-            playBtn.classList.toggle('hide');
-            stopBtn.classList.toggle('hide');
-            onGame = false;
-            boardActivate = false;
-            gameStatus.innerText = "You Lose... 😭";
-            gameStatus.style.visibility = "visible";
+        } else { // gameLose
+            gameLose();
+            alert.play();
         }
     } else {
         milliseconds = parseInt(milliseconds) - 1;
@@ -95,16 +129,12 @@ const gameTimer = () => {
     gameSettingTimer.innerText = `${seconds}:${milliseconds}`;
 }
 
-// gameSettingTimer.innerText = `${TIME_LIMIT}:00`;
-
 game__setting__playBtn.addEventListener('click', async (event) => {
     if (playBtn.classList.contains('hide')) { // Stop
-        playBtn.classList.toggle('hide');
-        stopBtn.classList.toggle('hide');
-        clearInterval(intervalId);
-        boardActivate = false;
+        gameStop();
         gameStatus.innerText = "Resume? 🖕";
-        gameStatus.style.visibility = "visible";
+        gameStatus.style.display = "block";
+        bg.pause();
     } else { // Start
         playBtn.classList.toggle('hide');
         stopBtn.classList.toggle('hide');
@@ -112,22 +142,14 @@ game__setting__playBtn.addEventListener('click', async (event) => {
             refreshBoard();
 
             onGame = true;
-            boardActivate = true;
             gameSettingTimer.innerText = `${TIME_LIMIT}:00`;
             gameSettingCount.innerText = CARROT_COUNT;
-            gameStatus.style.visibility = "hidden";
-            intervalId = setInterval(gameTimer, 10);
 
-            for (let i = 0; i < CARROT_COUNT; i++) {
-                putImgRandom("carrot")
-            }
-            for (let i = 0; i < BUG_COUNT; i++) {
-                putImgRandom("bug")
-            }
+            gameStart()
+            drawImgs();
         } else { // reStart
-            intervalId = setInterval(gameTimer, 10);
-            boardActivate = true;
-            gameStatus.style.visibility = "hidden";
+            gameStart()
+            
         }
     }
 });
@@ -137,24 +159,19 @@ game__board.addEventListener('click', (event) => {
     const targetType = target.classList[0];
     if (!boardActivate) return;
     if (targetType === "game__bug") {
-        playBtn.classList.toggle('hide');
-        stopBtn.classList.toggle('hide');
-        clearInterval(intervalId);
-        onGame = false;
-        boardActivate = false;
-        gameStatus.innerText = "You Lose... 😭";
-        gameStatus.style.visibility = "visible";
+        bugBg.play();
+        gameLose();
     } else if (targetType === "game__carrot") {
         gameSettingCount.innerText = String(parseInt(gameSettingCount.innerText) - 1);
         target.remove();
-        if (gameSettingCount.innerText === "0") { // Win
-            playBtn.classList.toggle('hide');
-            stopBtn.classList.toggle('hide');
-            clearInterval(intervalId);
+        carrotBg.play();
+        if (gameSettingCount.innerText === "0") { // game Win
+            gameStop();
             onGame = false;
-            boardActivate = false;
             gameStatus.innerText = "You Win! 😀";
-            gameStatus.style.visibility = "visible";
+            gameStatus.style.display = "block";
+            gameWin.play();
+            bg.pause();
         }
     }
 })
